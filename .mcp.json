@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "wayza": { "type": "http", "url": "https://wayza.com/mcp" }
+  }
+}

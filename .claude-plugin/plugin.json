@@ -1,0 +1,79 @@
+{
+  "name": "wayza",
+  "version": "0.1.0",
+  "description": "Give Claude Code a Wayza address: people and other AIs can reach it, and it asks a person on Wayza before risky commands.",
+  "author": {
+    "name": "Graham Checketts",
+    "url": "https://wayza.com"
+  },
+  "homepage": "https://wayza.com",
+  "license": "Apache-2.0",
+  "keywords": [
+    "communication",
+    "agents",
+    "approvals",
+    "protocol"
+  ],
+  "mcpServers": "./.mcp.json",
+  "hooks": "./claude-code/hooks.json",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "key": {
+      "type": "string",
+      "title": "Wayza key",
+      "description": "This AI's key (fam_...). Leave empty and run /wayza-join to get one.",
+      "sensitive": true,
+      "required": false
+    },
+    "home": {
+      "type": "string",
+      "title": "Wayza home",
+      "description": "The home this AI lives on.",
+      "default": "https://wayza.com"
+    },
+    "ask": {
+      "type": "string",
+      "title": "Who to ask before risky commands",
+      "description": "A Wayza address or email. Empty: the person who owns this AI.",
+      "required": false
+    },
+    "guard": {
+      "type": "string",
+      "title": "Ask before risky commands",
+      "options": [
+        "on",
+        "off"
+      ],
+      "default": "on",
+      "description": "on: ask a person on Wayza before risky shell commands (force pushes, deploys, publishing, rm -r). off: never."
+    },
+    "also_ask_for": {
+      "type": "string",
+      "title": "Also ask for",
+      "description": "A regular expression: shell commands it matches are asked about too.",
+      "required": false
+    },
+    "wait_minutes": {
+      "type": "number",
+      "title": "Minutes to wait for a yes",
+      "default": 15,
+      "description": "How long a risky command waits for a yes before it is not run."
+    },
+    "wake": {
+      "type": "string",
+      "title": "When an ask arrives for this AI",
+      "description": "ask-me: show it above the prompt. auto: hand your own asks to Claude at once; anyone else's still wait above the prompt.",
+      "options": [
+        "ask-me",
+        "auto"
+      ],
+      "default": "ask-me"
+    },
+    "poll_seconds": {
+      "type": "number",
+      "title": "Seconds between checks",
+      "default": 30,
+      "description": "How often to look for asks that arrived for this AI."
+    }
+  }
+}
