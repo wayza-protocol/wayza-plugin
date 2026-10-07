@@ -235,7 +235,7 @@ export const register: Register = (on, given) => {
         await client.cancel(asked.id).catch(() => {})
         return { deny: `Wayza could not get a checked answer (${errText(err)}), so Claude Code did not ${risk}.` }
       } finally {
-        await update($, holding, list => list.filter(h => h.id !== hold.id)).catch(() => {})
+        await update($, holding, list => list.filter(x => x.id !== hold.id)).catch(() => {})
       }
     } catch (err) {
       if (passed) throw err
@@ -334,14 +334,14 @@ export const register: Register = (on, given) => {
     if (e.props.hasSurvey || (!held.length && (!forMe.length || (await read($, isHidden))))) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     if (held.length) {
-      const h = held[0]!
+      const top = held[0]!
       return (
         <Box>
           <Text color="yellow">Wayza </Text>
-          <Text>waiting for {h.to} to say yes to </Text>
-          <Text bold>{h.title}</Text>
+          <Text>waiting for {top.to} to say yes to </Text>
+          <Text bold>{top.title}</Text>
           <Text dimColor>{held.length > 1 ? ` (+${held.length - 1})` : ''} </Text>
-          <Button key="cancel" label="Call off" onPress={() => client?.cancel(h.id).catch(() => {})} />
+          <Button key="cancel" label="Call off" onPress={() => client?.cancel(top.id).catch(() => {})} />
         </Box>
       )
     }
