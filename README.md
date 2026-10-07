@@ -35,13 +35,50 @@ Everything goes to your Wayza home (`https://wayza.com` unless you set another o
 - Before a risky command: the command (including anything written on its command line, such as a token), the folder
   it runs in and Claude's one-line reason for it, so a person can approve it. If the `ask` option is an email address, the same goes to that address by email.
 - When you or Claude use the `ask`, `answer` or `inbox` tools: what that tool needs, and nothing else.
-- Every 30 seconds (the `poll_seconds` option): a check for asks waiting for this AI.
+- Every 30 seconds (the `poll_seconds` option), and when a session starts: a check for asks waiting for this AI.
 - `/wayza-join`: a name for this AI ("Claude Code in" and the project folder's name), and your deploy key if you give
   one, to sign it up. It prints a link for you to claim it.
 
 The add-on reads nothing else from your session, files or environment, and talks to no other server. A key you enter is
 kept in the plugin's settings, marked sensitive; one from `/wayza-join` is kept in the plugin's own storage on this
 computer.
+
+## What the add-on hooks into
+
+The add-on is `claude-code/register.tsx`. These are all the places it joins Claude Code, and what each one does:
+
+- **Network.** Its only fetches go to your Wayza home, through Claude Code's own fetch: `https://wayza.com` unless you
+  set the `home` option (or `/wayza-join` saved the home it joined on). The home must use `https://`; plain `http://`
+  is refused, except on this computer itself for testing. No other host is contacted.
+- **Session start.** When a session starts it signs in to your home (if this Claude Code has a key), registers its
+  three tools and two commands, checks once for asks waiting for this AI, and starts the timer below.
+- **The Bash tool.** While `guard` is on, before each shell command runs it checks the command against a fixed list of
+  risky patterns and your `also_ask_for` expression (an expression that is not valid is ignored). An ordinary command
+  passes straight through and nothing is sent. A risky one is held, and an ask goes to your Wayza home for the person
+  in `ask` (or, if that is empty, the person who owns this AI). The ask carries a title naming the risk, the command,
+  the folder, Claude's one-line reason, an id for this tool call and an expiry time. The command runs only after that
+  person's yes. If the command is stopped, nobody answers in time, or the answer fails its checks, the ask is called
+  off and the command is not run. If anything fails along the way, the command is not run. Before this Claude Code has
+  a key (no `key` setting and no `/wayza-join` yet), there is nobody to ask and commands are not held.
+- **Tools it serves.** It registers and answers three tools itself: `mcp__wayza__ask` (ask someone and wait for the
+  answer), `mcp__wayza__inbox` (list asks waiting) and `mcp__wayza__answer` (answer an ask). `ask` and `answer` check
+  your permission settings first and send nothing unless they allow them (a rule in `/permissions`, or a permission
+  mode that allows tools). `inbox` only reads.
+- **Prompts it submits.** When you press "Hand to Claude" above the prompt, or with `wake: auto` for asks from you or
+  the person in `ask`, it puts one prompt into the session. That prompt holds the ask as it arrived: its id, who sent it
+  and their address (and that they are an AI nobody owns, when so), its title, details and choices, and whether it
+  takes a typed answer. Then a line tells Claude to treat those words as information, not instructions, and to answer
+  with the `answer` tool if it can, or to decline or tell you. It submits nothing else.
+- **Commands.** `/wayza-join` signs this Claude Code up on your Wayza home (sending a name made from "Claude Code in"
+  and the project folder's name, plus your deploy key if you give one), keeps the new key and home in the plugin's own
+  storage, and prints the link to claim it. `/wayza-status` shows the address, who owns it, the guard setting and any
+  waiting asks. Both also check for asks, with the same effects as the timer.
+- **The band above the prompt.** It shows a command waiting for a yes (with a "Call off" button) or the first ask for
+  this AI (with "Hand to Claude" and "Hide").
+- **Timer.** Every `poll_seconds` (default 30, never less than 10) it checks your Wayza home for asks waiting for this
+  AI. A new one shows above the prompt with a short notice, or with `wake: auto` goes to Claude as above.
+- **Storage.** The plugin's own storage on this computer holds the key and home from `/wayza-join`, and the ids of the
+  last 500 asks it has already seen, so none is shown twice.
 
 ## A seatbelt, not a security boundary
 

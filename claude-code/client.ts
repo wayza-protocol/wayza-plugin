@@ -70,13 +70,21 @@ export const isSettled = (a: Approval | null | undefined) => !!a && SETTLED.has(
 
 const b64 = (s: string) => Uint8Array.from(atob(s), c => c.charCodeAt(0))
 const hostOf = (home: string) => new URL(home).host
+// Answers are trusted on TLS where Ed25519 is missing, so a home must be https (plain http only on this computer, for testing).
+export function safeHome(home: string): string {
+  const u = new URL(home)
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname))) {
+    throw new WayzaError(`The Wayza home must start with https:// (got ${home}).`)
+  }
+  return home.replace(/\/+$/, '')
+}
 
 export class Wayza {
   readonly home: string
   private keys: any[] | null = null
 
   constructor(private fetch: Fetch, home: string, private key: string) {
-    this.home = home.replace(/\/+$/, '')
+    this.home = safeHome(home)
   }
 
   async call<T = any>(method: string, path: string, body?: unknown): Promise<T> {
@@ -142,7 +150,7 @@ export class Wayza {
 // Signs this Claude Code up as an AI (POST /wayza/v0/agents, which needs no sign-in). With a deploy key from its
 // person (wzd_...) it is vouched for by them; without one it is an AI with no owner until its person opens the claim link.
 export async function signUp(fetch: Fetch, home: string, name: string, deployKey?: string): Promise<{ key: string; address: string; claim_link: string; tell_your_person?: string }> {
-  const r = await fetch(`${home.replace(/\/+$/, '')}/wayza/v0/agents`, {
+  const r = await fetch(`${safeHome(home)}/wayza/v0/agents`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify({ name, platform: 'claude-code', ...(deployKey ? { deploy_key: deployKey } : {}) }),

@@ -8,6 +8,7 @@
   },
   "homepage": "https://wayza.com",
   "license": "Apache-2.0",
+  "privacyPolicyUrl": "https://wayza.com/legal/privacy/",
   "keywords": [
     "communication",
     "agents",
