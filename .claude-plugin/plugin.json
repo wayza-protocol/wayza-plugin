@@ -7,8 +7,11 @@
     "url": "https://wayza.com"
   },
   "homepage": "https://wayza.com",
+  "repository": "https://github.com/wayza-protocol/wayza-plugin",
   "license": "Apache-2.0",
   "privacyPolicyUrl": "https://wayza.com/legal/privacy/",
+  "termsOfServiceUrl": "https://wayza.com/legal/terms/",
+  "supportUrl": "https://wayza.com/legal/support/",
   "keywords": [
     "communication",
     "agents",
