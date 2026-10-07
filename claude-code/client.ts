@@ -1,6 +1,6 @@
 // A small Wayza client for the Claude Code mod, over the host's $.http.fetch (a mod has no fetch of its own).
-// It follows packages/CONTRACT.md and mirrors the checks in packages/human-js: a settled answer is accepted only
-// when the home's Ed25519 signature checks out, the record names the home we trust, and it answers our own ask.
+// It follows Wayza's REST API (https://wayza.com/docs/ask/): a settled answer is accepted only when the record names
+// the home we trust and answers our own ask, and its Ed25519 signature checks out wherever the host has Ed25519.
 import type { HttpInit, HttpResponse } from 'claude-code'
 
 // The host's fetch, `(url, init) => $.http.fetch(url, init)`, made where `$` is in hand.
@@ -15,6 +15,7 @@ export type Approval = {
   asked_by?: string
   asked_by_address?: string
   from_ai_with_no_owner?: boolean
+  caution?: string
   from_another_home?: boolean
   choices?: string[]
   free_text?: boolean
@@ -30,6 +31,12 @@ export type Me = {
 }
 
 export class WayzaError extends Error {}
+
+// Paid access stays out of connected AI apps for now, as on the home's MCP server (src/wayza/api/mcp.js): a refusal
+// about a price or credits reaches Claude in words that name neither.
+export const PRICE_REFUSAL = 'It was not sent: this person doesn\'t take this kind of request through a connected AI app for now.'
+export const isPriceError = (code: unknown, message: string) =>
+  code === 'price' || /costs [\d.]+ credits|no credits to pay|^Paying credits|^A price to reach/.test(message)
 
 export const canonical = (v: any): string =>
   Array.isArray(v)
@@ -80,7 +87,10 @@ export class Wayza {
     })
     let data: any = null
     try { data = r.text ? JSON.parse(r.text) : null } catch { /* not JSON */ }
-    if (!r.ok) throw new WayzaError(data?.error?.message || data?.error || data?.message || `Wayza answered ${r.status}`)
+    if (!r.ok) {
+      const message = String(data?.error?.message || data?.error || data?.message || `Wayza answered ${r.status}`)
+      throw new WayzaError(isPriceError(data?.error?.code ?? data?.code, message) ? PRICE_REFUSAL : message)
+    }
     return data as T
   }
 

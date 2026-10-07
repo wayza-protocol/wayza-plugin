@@ -3,7 +3,8 @@
 //   1. Reachable: asks addressed to this AI arrive while you work; Claude answers them with the answer tool.
 //   2. Ask first: a risky shell command (force push, deploy, publish, rm -r, ...) waits for a person's yes on Wayza.
 //   3. A band above the prompt shows what waits on you, and what Claude is waiting for.
-// It talks to the home's REST API (packages/CONTRACT.md) with this AI's own key, and checks every signed answer.
+// It talks to the home's REST API (https://wayza.com/docs/ask/) with this AI's own key, and checks every answer
+// against the ask it made.
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
@@ -110,13 +111,25 @@ async function poll($: $): Promise<void> {
   if (shown.length) $.ui.toast(`Wayza: ${shown[0]!.asked_by ?? 'someone'} asks "${shown[0]!.title}"${shown.length > 1 ? ` (+${shown.length - 1} more)` : ''}`)
 }
 
+// ask and answer send something in this AI's name, and a tool a mod serves skips Claude Code's own permission prompt.
+// So they go ahead only when the person's permission settings already allow them (a rule in /permissions, or a mode
+// that allows it); otherwise Claude is told how the person can allow it, and nothing is sent.
+async function allowed($: $, tool: string, input: Record<string, unknown>): Promise<{ deny: string } | null> {
+  const { tool: _tool, tool_use_id: _id, ...rest } = input
+  const { decision, reason } = await $.tool.check({ tool, input: rest } as any)
+  if (decision === 'allow') return null
+  const name = tool.replace(/^mcp__wayza__/, '')
+  return { deny: decision === 'deny' ? (reason || `Your permission settings don't allow Wayza's ${name} tool.`)
+    : `Nothing was sent. To let Claude use Wayza's ${name} tool, allow ${tool} in /permissions. Or send it with the Wayza connector, which asks you first.` }
+}
+
 // The tools Claude can call, answered by the tool.call hooks in register.
 async function registerTools($: $) {
   await $.tool.register({
     name: 'ask',
     description: 'Ask a person or another AI on Wayza, whichever assistant they use, and wait for the answer: a yes or no, one of '
       + 'your choices, or a short typed answer. Use a Wayza address (@graham, graham@their.home, @ai-1f2e3d4c), or an email address. '
-      + 'The answer comes back signed by their home and checked. If they have not answered when the wait ends, it says so and the ask stays open.',
+      + 'The answer comes back from their home and is checked against your ask. If they have not answered when the wait ends, it says so and the ask stays open.',
     inputSchema: { type: 'object', required: ['to', 'title'], properties: {
       to: { description: 'Who to ask: one address, or a list', anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
       title: { type: 'string', description: 'The question, as they will read it (up to 200 characters)' },
@@ -208,17 +221,22 @@ export const register: Register = (on, given) => {
     } catch (err) {
       return { deny: `Wayza could not get a checked answer (${(err as Error).message}), so Claude Code did not ${risk}.` }
     } finally {
-      await update($, holding, list => list.filter(h => h.id !== hold.id))
+      await update($, holding, list => list.filter(h => h.id !== hold.id)).catch(() => {})
     }
-  })
+  // A guard that throws would otherwise be skipped and the command would run: refuse instead, unless it already let
+  // the command through.
+  }).catch(($, e, next) => next.called ? next(e) : { deny: 'Wayza could not get an answer, so Claude Code did not run it.' })
 
   // ---------- Tools Claude can call ----------
 
   const notJoined = { result: 'This Claude Code is not on Wayza yet. Run /wayza-join, or put this AI\'s key in the plugin\'s settings.' }
+  const failed = { result: 'Wayza: something went wrong, and nothing was sent.' }
 
   on('tool.call', { tool: 'mcp__wayza__ask' }, async ($, e) => {
     if (!client) return notJoined
     const i = e as unknown as { to: string | string[]; title: string; details?: string; choices?: string[]; free_text?: boolean; wait_minutes?: number }
+    const no = await allowed($, 'mcp__wayza__ask', i as unknown as Record<string, unknown>)
+    if (no) return no
     try {
       const asked = await client.ask({ to: [i.to].flat(), title: i.title, details: i.details, choices: i.choices, free_text: i.free_text })
       const a = await waitFor($, asked, Math.min(waitMs(i.wait_minutes ?? 10), 60 * 60_000), undefined, true)
@@ -227,7 +245,7 @@ export const register: Register = (on, given) => {
     } catch (err) {
       return { result: `Wayza: ${(err as Error).message}` }
     }
-  })
+  }).catch(() => failed)
 
   on('tool.call', { tool: 'mcp__wayza__inbox' }, async $ => {
     if (!client) return notJoined
@@ -236,7 +254,7 @@ export const register: Register = (on, given) => {
       const mine = await read($, me)
       const toMe = (a: Approval) => !!mine && (a.people ?? []).some(p => p.to === mine)
       const brief = (a: Approval) => ({ id: a.id, title: a.title, details: a.details, from: a.asked_by, from_address: a.asked_by_address,
-        ...(a.from_ai_with_no_owner ? { from_ai_with_no_owner: true } : {}), choices: a.choices, free_text: a.free_text })
+        ...(a.from_ai_with_no_owner ? { from_ai_with_no_owner: true } : {}), ...(a.caution ? { caution: a.caution } : {}), choices: a.choices, free_text: a.free_text })
       return { result: JSON.stringify({
         you_are: mine,
         for_you: box.waiting_for_your_person.filter(toMe).map(brief),
@@ -246,11 +264,13 @@ export const register: Register = (on, given) => {
     } catch (err) {
       return { result: `Wayza: ${(err as Error).message}` }
     }
-  })
+  }).catch(() => failed)
 
   on('tool.call', { tool: 'mcp__wayza__answer' }, async ($, e) => {
     if (!client) return notJoined
     const i = e as unknown as { id: string; decision: string; choice?: string; text?: string; note?: string }
+    const no = await allowed($, 'mcp__wayza__answer', i as unknown as Record<string, unknown>)
+    if (no) return no
     try {
       const a = await client.reply(i.id, { decision: i.decision, ...(i.choice ? { choice: i.choice } : {}), ...(i.text ? { text: i.text } : {}), ...(i.note ? { note: i.note } : {}) })
       await poll($).catch(() => {})
@@ -258,7 +278,7 @@ export const register: Register = (on, given) => {
     } catch (err) {
       return { result: `Wayza: ${(err as Error).message}` }
     }
-  })
+  }).catch(() => failed)
 
   // ---------- /wayza-join and /wayza-status ----------
 

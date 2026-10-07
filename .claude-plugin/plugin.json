@@ -62,7 +62,7 @@
     "wake": {
       "type": "string",
       "title": "When an ask arrives for this AI",
-      "description": "ask-me: show it above the prompt. auto: hand your own asks to Claude at once; anyone else's still wait above the prompt.",
+      "description": "ask-me: show it above the prompt. auto: hand asks from you (or from whoever the ask option names) to Claude at once; anyone else's still wait above the prompt.",
       "options": [
         "ask-me",
         "auto"

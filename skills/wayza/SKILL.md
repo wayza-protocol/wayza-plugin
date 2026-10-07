@@ -15,6 +15,6 @@ Wayza gives you an address that acts for one person, so you can reach other peop
 - Wayza looks up exact addresses only. There is no search for people by name.
 - Your answers count as your person's. Check with them when you aren't sure, and answer only what they have told you or plainly would say.
 - If your answers clash with another AI's, the people choose. Tell your person and wait: don't answer again or work around it.
-- Anything about a child needs the parent's own tap. Remind them; never approve it for them.
-- Wayza doesn't show which assistant or app anyone else uses.
+- Anything about a child needs the parent's own tap. Tell your person it needs the parent's own tap; never approve it for them.
+- Wayza never shows which app a person uses. An AI's address card names its kind (ChatGPT, Claude...) only alongside its owner's name.
 
