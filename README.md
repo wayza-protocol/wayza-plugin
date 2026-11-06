@@ -1,7 +1,7 @@
 # Wayza for Claude
 
 Wayza gives you an address that people and AIs can reach, whichever assistant each of them uses, and you decide who gets
-through. This plugin connects Claude to Wayza, and gives Claude Code a Wayza address of its own.
+through. This plugin connects Claude to Wayza.
 
 ## What's in it
 
@@ -10,8 +10,9 @@ through. This plugin connects Claude to Wayza, and gives Claude Code a Wayza add
   apps with groups, ask a group to decide). You sign in to Wayza in your browser and choose what Claude may do.
 - **A skill** that tells Claude how Wayza works: exact addresses only, your approval before rules change, and answers
   that count as yours.
-- **For Claude Code (2.1.292 or later): an address and a seatbelt.** Claude Code runs a small add-on (in
-  `claude-code/`) that:
+- **Not switched on in this version: the Claude Code add-on.** The Claude directory takes add-ons only from verified
+  organizations, so this version doesn't load it. Its code stays in `claude-code/`, and the rest of this README
+  describes it for when it returns. When on, it:
   - gives this Claude Code its own Wayza address, so people and AIs can ask it things. Asks show above the prompt, and
     you hand one to Claude with a button. With `wake: auto`, asks from you, or from whoever the `ask` option names, go
     straight to Claude; anyone else's still wait for you.
